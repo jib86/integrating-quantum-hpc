@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="copyright" content="© 2026 J. Ignacio Borge · CC BY-NC-ND 4.0">
+<title>Muchos procesadores, un solo problema</title>
+<style>
+  :root { color-scheme: dark; --papel:#ececec; --tenue:#9a9a9a; --linea:#2c2c2c; --celeste:#58c4dd; --violeta:#b28fc4; --salmon:#fc6255;
+          --serif:"STIX Two Text","Latin Modern Roman",Georgia,"Times New Roman",serif; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; background:#000; color:var(--papel); font-family:var(--serif); display:flex; align-items:center; justify-content:center; padding:32px 16px; }
+  main { width:100%; max-width:560px; }
+  .serie { color:var(--tenue); font-size:14px; letter-spacing:.12em; text-transform:uppercase; margin:0 0 14px; }
+  h1 { font-weight:400; font-size:clamp(32px,6vw,48px); line-height:1.1; margin:0 0 28px; color:var(--celeste); }
+  p { font-size:18px; line-height:1.5; margin:0 0 18px; }
+  form { display:flex; gap:10px; flex-wrap:wrap; }
+  input { flex:1 1 220px; font:inherit; font-size:18px; padding:12px 14px; background:#111; color:var(--papel); border:1px solid #555; border-radius:8px; }
+  input:focus { outline:2px solid var(--celeste); outline-offset:1px; }
+  button { font:inherit; font-size:18px; padding:12px 22px; background:#12313a; color:#fff; border:1px solid #2f6f80; border-radius:8px; cursor:pointer; }
+  button:disabled { opacity:.6; cursor:wait; }
+  .msg { min-height:26px; margin-top:12px; font-size:16px; }
+  .msg.error { color:var(--salmon); }
+  .barra { height:3px; background:var(--linea); margin-top:10px; border-radius:2px; overflow:hidden; display:none; }
+  .barra span { display:block; height:100%; width:0; background:var(--celeste); transition:width .2s; }
+  footer { margin-top:40px; border-top:1px solid var(--linea); padding-top:16px; color:var(--tenue); font-size:14px; line-height:1.6; }
+  footer a { color:var(--papel); }
+</style>
+</head>
+<body>
+<main>
+  <p class="serie">Integrating Quantum &amp; HPC · Sesión 1</p>
+  <h1>Muchos procesadores, un solo problema</h1>
+  <p>Esta presentación está protegida. Escriba la contraseña para verla.</p>
+  <form id="f" autocomplete="off">
+    <input id="c" type="password" placeholder="Contraseña" aria-label="Contraseña" autofocus required>
+    <button id="b" type="submit">Abrir</button>
+  </form>
+  <div class="barra" id="barra"><span id="prog"></span></div>
+  <div class="msg" id="m" role="status"></div>
+  <footer>© 2026 J. Ignacio Borge. Licencia <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/deed.es">CC BY-NC-ND 4.0</a>: se puede compartir citando al autor, sin fines comerciales y sin modificaciones.<br><a href="../../">← Todas las sesiones</a></footer>
+</main>
+<script>
+(function () {
+  const SAL = Uint8Array.from(atob('/jvlowueD4J9oD4l9tqURA=='), c => c.charCodeAt(0));
+  const ITER = 1000000;
+  const VIDEOS = ["anatomia_cluster", "arquitectura_qcsc", "bit_qubit", "campos_bits", "circuito_muestreo", "crecimiento", "dentro_computadora", "dividir", "escala_hpc", "explosion", "historia_hpc", "n_qubits", "no_trabaja_solo", "trabajo_hibrido"];
+  const CLAVE_SESION = 'iqh-clave-es';
+  const f = document.getElementById('f'), c = document.getElementById('c'), b = document.getElementById('b'),
+        m = document.getElementById('m'), barra = document.getElementById('barra'), prog = document.getElementById('prog');
+  const b64 = buf => btoa(String.fromCharCode.apply(null, new Uint8Array(buf)));
+  const deb64 = s => Uint8Array.from(atob(s), ch => ch.charCodeAt(0));
+
+  async function derivar(pass) {
+    const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveBits']);
+    return crypto.subtle.deriveBits({ name: 'PBKDF2', salt: SAL, iterations: ITER, hash: 'SHA-256' }, base, 256);
+  }
+
+  async function abrir(bits) {
+    const key = await crypto.subtle.importKey('raw', bits, 'AES-GCM', false, ['decrypt']);
+    async function descifrar(url) {
+      const r = await fetch(url, { cache: 'no-cache' });
+      if (!r.ok) throw new Error('fetch ' + url + ' ' + r.status);
+      const buf = new Uint8Array(await r.arrayBuffer());
+      return crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, key, buf.slice(12));
+    }
+    let html = new TextDecoder().decode(await descifrar('contenido.bin'));
+    m.className = 'msg'; m.textContent = 'Descifrando la presentación…'; barra.style.display = 'block';
+    let listos = 0;
+    await Promise.all(VIDEOS.map(async function (n) {
+      const datos = await descifrar('videos/' + n + '.bin');
+      const url = URL.createObjectURL(new Blob([datos], { type: 'video/mp4' }));
+      html = html.split('videos/' + n + '.mp4').join(url);
+      listos++; prog.style.width = Math.round(100 * listos / VIDEOS.length) + '%';
+    }));
+    try { sessionStorage.setItem(CLAVE_SESION, b64(bits)); } catch (e) {}
+    document.open(); document.write(html); document.close();
+  }
+
+  f.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    b.disabled = true; m.className = 'msg'; m.textContent = '…';
+    try { await abrir(await derivar(c.value)); }
+    catch (err) {
+      b.disabled = false; barra.style.display = 'none';
+      m.className = 'msg error'; m.textContent = (err && err.name === 'OperationError') ? 'Contraseña incorrecta. Intente de nuevo.' : String(err);
+      c.select();
+    }
+  });
+
+  // Si esta pestaña (o la ventana que abrió la vista del presentador) ya se desbloqueó, abre directo
+  let guardada = null;
+  try { guardada = sessionStorage.getItem(CLAVE_SESION); } catch (e) {}
+  if (guardada) { b.disabled = true; abrir(deb64(guardada).buffer).catch(function () { b.disabled = false; m.textContent = ''; try { sessionStorage.removeItem(CLAVE_SESION); } catch (e) {} }); }
+})();
+</script>
+</body>
+</html>
