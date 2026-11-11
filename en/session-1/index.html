@@ -53,7 +53,7 @@
   const deb64 = s => Uint8Array.from(atob(s), ch => ch.charCodeAt(0));
 
   async function derivar(pass) {
-    const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveBits']);
+    const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass.trim().toLowerCase()), 'PBKDF2', false, ['deriveBits']);
     return crypto.subtle.deriveBits({ name: 'PBKDF2', salt: SAL, iterations: ITER, hash: 'SHA-256' }, base, 256);
   }
 
